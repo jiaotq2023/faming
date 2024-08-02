@@ -1,0 +1,79 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Oct 10 10:56:59 2021
+
+@author: chairman
+"""
+import pandas as pd
+from powerbi国际版api刷新 import refreshtable
+import time
+import gc
+
+
+def realdate(stamp):
+    delta = pd.Timedelta(str(stamp)+'D')
+    real_time = pd.to_datetime('1899-12-30') + delta
+    return real_time
+
+#整理每一个sheet
+def get_info_one_sheet(sheet, data0, data):
+    classtime_table_one_sheet = []
+    for i in range(0, data.shape[0]):
+        if data.iloc[i, 0] == "教师姓名":
+            data1 = data.iloc[i:i+10].reset_index(drop=True)
+            tname_in_table = data1.iloc[0, 1]
+            print(tname_in_table)
+            for a in range(len(data0)):
+                if data0.loc[a, '课表教师姓名'] == tname_in_table:
+                    tname = data0.loc[a, '教师姓名']
+                    print(tname)
+                    break
+            for c in range(1, data1.shape[1]):   
+                classdate = data1.iloc[2, c]
+                for r in range(3, data1.shape[0]):
+                    if data1.iloc[r, 0] != "午休":
+                        classtime = data1.iloc[r, 0]
+                        classname = data1.iloc[r, c]
+                        if str(classname).strip() not in ["nan", "NaT", ""]:
+                            classtime_table_info_one_row = [classtime, tname_in_table, classdate, classname, tname]
+                            classtime_table_one_sheet.append(classtime_table_info_one_row)
+    return classtime_table_one_sheet
+    
+
+
+
+
+def class_time_table():
+    fpath = r"D:\OneDrive - weixinedu\课表预排.xlsx"
+
+    data0 = pd.read_excel(fpath, sheet_name="教师姓名表", engine='openpyxl')
+    gc.collect()
+
+    classtime_table = []
+    xls = pd.ExcelFile(fpath, engine='openpyxl')
+    for sheet in xls.sheet_names:
+        print(sheet)
+        if sheet != "教师姓名表":
+        #if sheet == "2024年寒假":
+            data = pd.read_excel(xls, sheet_name=sheet,header=None,  engine='openpyxl')
+            #print(data)
+            classtime_table_one_sheet = get_info_one_sheet(sheet, data0, data)
+            classtime_table += classtime_table_one_sheet
+
+    classtime_table = pd.DataFrame(classtime_table)
+    classtime_table.columns = ['上课时间', '课表教师姓名', '上课日期', '值', '教师姓名']
+    classtime_table.to_excel(r"D:\课表整理结果\课表预排结果.xlsx", index=False)
+    print("课表整理完毕")
+
+
+
+
+if __name__ == '__main__':
+    with open(r"D:\表pa存储\a.txt", "w") as file:
+        file.write("abc")
+    time.sleep(10)
+    class_time_table()
+    time.sleep(10)
+    response_code=refreshtable(["预排课表","预排课表-春秋季时间","预排课表-寒暑假时间","预排课表-课表日期","预排课表-显示类别","刷新时间课表"])
+    print(response_code)
+
